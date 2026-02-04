@@ -4,6 +4,7 @@ import os
 from typing import Optional
 
 from fastapi import Depends, FastAPI, HTTPException
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
 from .auth import load_users, require_roles, sign_token, verify_password
@@ -27,6 +28,53 @@ class SignedUploadRequest(BaseModel):
     content_type: Optional[str] = None
     # URLの有効期限（秒）。実験用途では短めにして乱用耐性を上げます。
     expires_in: int = 300
+
+
+@app.get("/", response_class=HTMLResponse)
+def landing() -> str:
+    # スモークテスト用の簡易ランディングページ。疎通確認の入口をまとめます。
+    return """<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>FastAPI Smoketest</title>
+    <style>
+      :root { color-scheme: light; }
+      body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; margin: 0; background: #f7f7f7; color: #222; }
+      main { max-width: 880px; margin: 48px auto; padding: 0 20px; }
+      .card { background: #fff; border: 1px solid #e4e4e4; border-radius: 12px; padding: 20px; }
+      h1 { font-size: 28px; margin: 0 0 8px; }
+      h2 { font-size: 18px; margin: 24px 0 8px; }
+      p { margin: 6px 0; line-height: 1.6; }
+      code { background: #f1f1f1; padding: 2px 6px; border-radius: 6px; }
+      ul { padding-left: 18px; margin: 8px 0; }
+      .note { background: #f9f5e9; border: 1px solid #f0e2b6; padding: 12px; border-radius: 8px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="card">
+        <h1>FastAPI Smoketest</h1>
+        <p>このページはデプロイ確認用の簡易ランディングページです。</p>
+        <div class="note">
+          <p>最小の疎通確認は <code>/health</code> が 200 を返すことです。</p>
+        </div>
+        <h2>エンドポイント</h2>
+        <ul>
+          <li><code>/health</code> 監視用</li>
+          <li><code>/health/db</code> データベース接続の確認（データベースが必要）</li>
+          <li><code>/auth/login</code> 認証トークン発行</li>
+          <li><code>/auth/me</code> 認証確認</li>
+          <li><code>/signed-upload-url</code> 署名付きアップロードURL</li>
+          <li><code>/signed-download-url</code> 署名付きダウンロードURL</li>
+        </ul>
+        <h2>補足</h2>
+        <p><code>/auth/*</code> と署名URLは環境変数の設定が必要です。</p>
+      </div>
+    </main>
+  </body>
+</html>"""
 
 
 @app.get("/health")
