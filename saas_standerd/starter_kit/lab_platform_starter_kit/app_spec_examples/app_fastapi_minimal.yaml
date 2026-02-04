@@ -1,0 +1,39 @@
+name: lab-fastapi-minimal
+region: sgp
+
+alerts:
+- rule: DEPLOYMENT_FAILED
+- rule: DOMAIN_FAILED
+
+services:
+- name: web
+  environment_slug: python
+  github:
+    repo: YOUR_ORG/YOUR_REPO
+    branch: main
+    deploy_on_push: true
+  dockerfile_path: Dockerfile
+  source_dir: /
+  http_port: 8080
+
+  # 最小コスト（固定1台）
+  instance_count: 1
+  instance_size_slug: apps-s-1vcpu-0.5gb
+
+  health_check:
+    http_path: /health
+    port: 8080
+    initial_delay_seconds: 10
+    period_seconds: 10
+    timeout_seconds: 5
+    success_threshold: 1
+    failure_threshold: 5
+
+  envs:
+  - key: AUTH_TOKEN_SECRET
+    scope: RUN_AND_BUILD_TIME
+    type: SECRET
+  - key: AUTH_USERS_JSON
+    scope: RUN_AND_BUILD_TIME
+    type: SECRET
+  # DB/Spacesは必要に応じて追加

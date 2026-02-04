@@ -1,0 +1,181 @@
+name: lab-your-project
+region: sgp
+
+alerts:
+- rule: DEPLOYMENT_FAILED
+- rule: DOMAIN_FAILED
+
+services:
+- name: web
+  # NOTE:
+  # - 言語に合わせて変更してください（例：python / node-js）
+  environment_slug: REPLACE_ME
+  github:
+    repo: YOUR_ORG/YOUR_REPO
+    branch: main
+    deploy_on_push: true
+  dockerfile_path: Dockerfile
+  source_dir: /
+  http_port: 8080
+
+  # コスト見積もりと挙動を固定するため、基本は明示します
+  instance_count: 1
+  instance_size_slug: apps-s-1vcpu-1gb
+
+  # /health を死活監視し、壊れたら自動再起動
+  health_check:
+    http_path: /health
+    port: 8080
+    initial_delay_seconds: 10
+    period_seconds: 10
+    timeout_seconds: 5
+    success_threshold: 1
+    failure_threshold: 5
+  liveness_health_check:
+    http_path: /health
+    port: 8080
+    initial_delay_seconds: 10
+    period_seconds: 10
+    timeout_seconds: 5
+    success_threshold: 1
+    failure_threshold: 6
+
+  envs:
+  - key: PORT
+    value: "8080"
+    scope: RUN_TIME
+
+  # 任意：実験のモード（アプリ側で使うなら）
+  - key: APP_ENV
+    value: production
+    scope: RUN_TIME
+
+  # DB（Managed PostgreSQL）
+  - key: DATABASE_URL
+    value: REPLACE_ME
+    type: SECRET
+    scope: RUN_TIME
+
+  # Spaces（S3互換）
+  - key: SPACES_BUCKET
+    value: REPLACE_ME
+    scope: RUN_TIME
+  - key: SPACES_REGION
+    value: REPLACE_ME
+    scope: RUN_TIME
+  - key: SPACES_ENDPOINT_URL
+    value: REPLACE_ME
+    scope: RUN_TIME
+  - key: SPACES_ACCESS_KEY_ID
+    value: REPLACE_ME
+    type: SECRET
+    scope: RUN_TIME
+  - key: SPACES_SECRET_ACCESS_KEY
+    value: REPLACE_ME
+    type: SECRET
+    scope: RUN_TIME
+
+  # 認証（RBAC）
+  - key: AUTH_TOKEN_SECRET
+    value: REPLACE_ME
+    type: SECRET
+    scope: RUN_TIME
+  - key: AUTH_USERS_JSON
+    value: REPLACE_ME
+    type: SECRET
+    scope: RUN_TIME
+
+  # 任意：メール送信（プロジェクトで採用する場合のみ。実装は各アプリ側）
+  # - key: MAIL_FROM
+  #   value: REPLACE_ME
+  #   scope: RUN_TIME
+  # - key: MAIL_API_KEY
+  #   value: REPLACE_ME
+  #   type: SECRET
+  #   scope: RUN_TIME
+
+jobs:
+- name: nightly-backup
+  kind: SCHEDULED
+  schedule:
+    cron: "0 3 * * *"
+    time_zone: Asia/Tokyo
+  environment_slug: docker
+  github:
+    repo: YOUR_ORG/YOUR_REPO
+    branch: main
+    deploy_on_push: true
+  dockerfile_path: Dockerfile.backup
+  source_dir: /
+  instance_count: 1
+  instance_size_slug: apps-s-1vcpu-0.5gb
+  run_command: "bash scripts/backup_pg_to_spaces.sh"
+  envs:
+  - key: APP_NAME
+    value: lab-your-project
+    scope: RUN_TIME
+  - key: DATABASE_URL
+    value: REPLACE_ME
+    type: SECRET
+    scope: RUN_TIME
+  - key: SPACES_BUCKET
+    value: REPLACE_ME
+    scope: RUN_TIME
+  - key: SPACES_ENDPOINT_URL
+    value: REPLACE_ME
+    scope: RUN_TIME
+  - key: SPACES_BACKUP_PREFIX
+    value: backups
+    scope: RUN_TIME
+  - key: SPACES_ACCESS_KEY_ID
+    value: REPLACE_ME
+    type: SECRET
+    scope: RUN_TIME
+  - key: SPACES_SECRET_ACCESS_KEY
+    value: REPLACE_ME
+    type: SECRET
+    scope: RUN_TIME
+
+# --- OPTIONAL: prune old backups (retention) ---
+# nightly-backup の dump を一定日数で削除する Job 例です。
+# 必要に応じて jobs: 配下に追加してください（またはUIでScheduled Jobを追加）。
+#
+# - name: prune-backups
+#   kind: SCHEDULED
+#   schedule:
+#     cron: "30 3 * * 0"        # 例: 毎週日曜 03:30
+#     time_zone: Asia/Tokyo
+#   environment_slug: docker
+#   github:
+#     repo: YOUR_ORG/YOUR_REPO
+#     branch: main
+#     deploy_on_push: true
+#   dockerfile_path: Dockerfile.backup
+#   source_dir: /
+#   instance_count: 1
+#   instance_size_slug: apps-s-1vcpu-0.5gb
+#   run_command: "bash scripts/prune_pg_backups.sh"
+#   envs:
+#   - key: APP_NAME
+#     value: lab-your-project
+#     scope: RUN_TIME
+#   - key: SPACES_BUCKET
+#     value: REPLACE_ME
+#     scope: RUN_TIME
+#   - key: SPACES_ENDPOINT_URL
+#     value: REPLACE_ME
+#     scope: RUN_TIME
+#   - key: SPACES_BACKUP_PREFIX
+#     value: backups
+#     scope: RUN_TIME
+#   - key: BACKUP_RETENTION_DAYS
+#     value: "30"
+#     scope: RUN_TIME
+#   - key: SPACES_ACCESS_KEY_ID
+#     value: REPLACE_ME
+#     type: SECRET
+#     scope: RUN_TIME
+#   - key: SPACES_SECRET_ACCESS_KEY
+#     value: REPLACE_ME
+#     type: SECRET
+#     scope: RUN_TIME

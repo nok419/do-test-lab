@@ -1,0 +1,112 @@
+name: lab-node-ws-sample
+region: sgp
+
+alerts:
+- rule: DEPLOYMENT_FAILED
+- rule: DOMAIN_FAILED
+
+services:
+- name: web
+  environment_slug: node-js
+  github:
+    repo: YOUR_ORG/YOUR_REPO
+    branch: main
+    deploy_on_push: true
+  dockerfile_path: Dockerfile
+  source_dir: /
+  http_port: 8080
+
+  # WebSocketアプリは状態管理の都合で 1インスタンス固定が安全なケースがあります
+  # 2インスタンス化したい場合は、ステートレス化や共有ストア導入を検討してください
+  instance_count: 1
+  instance_size_slug: apps-s-1vcpu-1gb
+
+  health_check:
+    http_path: /health
+    port: 8080
+    initial_delay_seconds: 10
+    period_seconds: 10
+    timeout_seconds: 5
+    success_threshold: 1
+    failure_threshold: 5
+  liveness_health_check:
+    http_path: /health
+    port: 8080
+    initial_delay_seconds: 10
+    period_seconds: 10
+    timeout_seconds: 5
+    success_threshold: 1
+    failure_threshold: 6
+
+  envs:
+  - key: PORT
+    value: "8080"
+    scope: RUN_TIME
+
+  # Spaces（S3互換）
+  - key: SPACES_BUCKET
+    value: REPLACE_ME
+    scope: RUN_TIME
+  - key: SPACES_REGION
+    value: REPLACE_ME
+    scope: RUN_TIME
+  - key: SPACES_ENDPOINT_URL
+    value: REPLACE_ME
+    scope: RUN_TIME
+  - key: SPACES_ACCESS_KEY_ID
+    value: REPLACE_ME
+    type: SECRET
+    scope: RUN_TIME
+  - key: SPACES_SECRET_ACCESS_KEY
+    value: REPLACE_ME
+    type: SECRET
+    scope: RUN_TIME
+
+  # 認証（RBAC）
+  - key: AUTH_TOKEN_SECRET
+    value: REPLACE_ME
+    type: SECRET
+    scope: RUN_TIME
+  - key: AUTH_USERS_JSON
+    value: REPLACE_ME
+    type: SECRET
+    scope: RUN_TIME
+
+jobs:
+- name: nightly-backup
+  kind: SCHEDULED
+  schedule:
+    cron: "0 3 * * *"
+    time_zone: Asia/Tokyo
+  environment_slug: docker
+  github:
+    repo: YOUR_ORG/YOUR_REPO
+    branch: main
+    deploy_on_push: true
+  dockerfile_path: Dockerfile.backup
+  source_dir: /
+  instance_count: 1
+  instance_size_slug: apps-s-1vcpu-0.5gb
+  run_command: "bash scripts/backup_pg_to_spaces.sh"
+  envs:
+  - key: APP_NAME
+    value: lab-node-ws-sample
+    scope: RUN_TIME
+  - key: DATABASE_URL
+    value: REPLACE_ME
+    type: SECRET
+    scope: RUN_TIME
+  - key: SPACES_BUCKET
+    value: REPLACE_ME
+    scope: RUN_TIME
+  - key: SPACES_ENDPOINT_URL
+    value: REPLACE_ME
+    scope: RUN_TIME
+  - key: SPACES_ACCESS_KEY_ID
+    value: REPLACE_ME
+    type: SECRET
+    scope: RUN_TIME
+  - key: SPACES_SECRET_ACCESS_KEY
+    value: REPLACE_ME
+    type: SECRET
+    scope: RUN_TIME

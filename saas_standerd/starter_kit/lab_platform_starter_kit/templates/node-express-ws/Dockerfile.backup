@@ -1,0 +1,13 @@
+# syntax=docker/dockerfile:1
+FROM postgres:16-alpine
+
+# バックアップ専用イメージ。
+# - pg_dump / pg_restore を使うため postgres イメージを利用します。
+# - Spacesへアップロードするため aws cli を追加します。
+# - 世代削除（prune）で日付計算が必要なため coreutils(date) を追加します。
+RUN apk add --no-cache bash aws-cli coreutils
+
+WORKDIR /work
+COPY scripts ./scripts
+
+# Job側のrun_commandで scripts/backup_pg_to_spaces.sh や scripts/prune_pg_backups.sh を呼ぶ想定です。
